@@ -2,4 +2,4 @@
 
 This is an archive of data from the NY Times game Vertex.
 
-![Preview of data files](preview.png)
+![Preview of data files](images/preview.png)

@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 import os
 import json
+import time
 
 def show_puzzle(data):
     min_x, min_y, max_x, max_y = None, None, None, None
@@ -43,12 +44,12 @@ def enum_puzzles():
     dirs = ["data"]
     while len(dirs):
         cur_dir = dirs.pop(0)
-        for cur in sorted(os.listdir(cur_dir)):
-            cur = os.path.join(cur_dir, cur)
+        for fn in sorted(os.listdir(cur_dir)):
+            cur = os.path.join(cur_dir, fn)
             if os.path.isdir(cur):
                 dirs.append(cur)
             else:
-                yield cur
+                yield fn, cur
 
 def main():
     width, height = 50, 50
@@ -57,14 +58,38 @@ def main():
     images = []
     x, y = 0, 0
 
-    for cur in enum_puzzles():
-        images.append({
-            "x": x,
-            "y": y,
+    fnt = ImageFont.truetype(os.path.join("images", "OpenSans-Regular.ttf"), 40)
+    last_year = "--"
+
+    for file_only, fn in enum_puzzles():
+        temp = {
             "width": width,
             "height": height,
-            "fn": cur,
-        })
+            "fn": fn,
+            "file_only": file_only,
+            "year": file_only[:4],
+        }
+
+        if temp['year'] != last_year:
+            if x != 0:
+                x = 0
+                y += height
+            to_disp = f"    {temp['year']}"
+            disp_size = fnt.getbbox(to_disp)
+            images.append({
+                "text": to_disp,
+                "x": x,
+                "y": y,
+                "width": int(disp_size[2]),
+                "height": int(disp_size[3] * 1.2),
+            })
+            y += images[-1]['height']
+            last_year = temp['year']
+
+        temp["x"] = x
+        temp["y"] = y
+
+        images.append(temp)
 
         x += width
         if x > target_size:
@@ -75,15 +100,26 @@ def main():
     height = max((x['height'] + x['y']) for x in images)
 
     im = Image.new('RGB', (width, height), (255, 255, 255))
-    for cur in images:
-        print(cur['fn'])
-        with open(cur['fn']) as f:
-            data = json.load(f)
-        temp = show_puzzle(data)
-        temp.thumbnail((cur['width'], cur['height']))
-        im.paste(temp, (cur['x'], cur['y']))
+    dr = ImageDraw.Draw(im)
+    last_year = "--"
 
-    im.save("preview.png")
+    next_msg = time.time()
+    for i, cur in enumerate(images):
+        if 'text' in cur:
+            dr.text((cur['x'], cur['y']), cur['text'], (0, 0, 0), fnt)
+        else:
+            if time.time() >= next_msg:
+                next_msg += 0.5
+                print(f"Working on {i}: {cur['fn']}")
+            with open(cur['fn']) as f:
+                data = json.load(f)
+            temp = show_puzzle(data)
+            temp.thumbnail((cur['width'], cur['height']))
+            im.paste(temp, (cur['x'], cur['y']))
+            temp.close()
+
+    im.save(os.path.join("images", "preview.png"))
+    print("Done!")
 
 if __name__ == "__main__":
     main()
