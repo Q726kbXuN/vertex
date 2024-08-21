@@ -33,7 +33,7 @@ def show_puzzle(data):
         c = int(shape["color"])
         c = data["palette"][c]
         if len(c) == 4:
-            c = (int(c[1:2]+c[1:2], 16), int(c[2:3]+c[2:3], 16), int(c[3:4]+c[3:4], 16)) + ((255,) if transparent else tuple())
+            c = (int(c[1], 16) * 17, int(c[2], 16) * 17, int(c[3], 16) * 17) + ((255,) if transparent else tuple())
         else:
             c = (int(c[1:3], 16), int(c[3:5], 16), int(c[5:7], 16)) + ((255,) if transparent else tuple())
         dr.polygon(pts, c)
