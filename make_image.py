@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageOps
 import os
 import json
 import time
 from datetime import datetime, timedelta
 
-def show_puzzle(data):
+def show_puzzle(data, transparent=False, solid_color=None):
     # Simple helper to decode a Vertex data dump into an image
     min_x, min_y, max_x, max_y = None, None, None, None
     # Run through all of the vertex points and figure out the size of the image
@@ -22,7 +22,6 @@ def show_puzzle(data):
 
     # Scale everthing to a big image
     width, height = 1000, 1000
-    transparent = False
     length = max(max_x - min_x, max_y - min_y) * 1.1
 
     # Draw each polygon in turn
@@ -35,13 +34,16 @@ def show_puzzle(data):
             x = ((x - ((min_x + max_x) / 2)) / (length / 2)) * (width / 2) + (width / 2)
             y = ((y - ((min_y + max_y) / 2)) / (length / 2)) * (height / 2) + (height / 2)
             pts.append((x, y))
-        c = int(shape["color"])
-        c = data["palette"][c]
-        # Turn the #rrggbb or #rgb into a normal PIL color tuple
-        if len(c) == 4:
-            c = (int(c[1], 16) * 17, int(c[2], 16) * 17, int(c[3], 16) * 17) + ((255,) if transparent else tuple())
+        if solid_color is None:
+            c = int(shape["color"])
+            c = data["palette"][c]
+            # Turn the #rrggbb or #rgb into a normal PIL color tuple
+            if len(c) == 4:
+                c = (int(c[1], 16) * 17, int(c[2], 16) * 17, int(c[3], 16) * 17) + ((255,) if transparent else tuple())
+            else:
+                c = (int(c[1:3], 16), int(c[3:5], 16), int(c[5:7], 16)) + ((255,) if transparent else tuple())
         else:
-            c = (int(c[1:3], 16), int(c[3:5], 16), int(c[5:7], 16)) + ((255,) if transparent else tuple())
+            c = solid_color
         # Draw the polygon
         dr.polygon(pts, c)
 
@@ -59,6 +61,15 @@ def enum_puzzles():
                 dirs.append(cur)
             else:
                 yield fn, cur
+
+class OccasionalMessage:
+    def __init__(self):
+        self.next_msg = time.time()
+    def __call__(self, value):
+        if time.time() >= self.next_msg:
+            while time.time() >= self.next_msg:
+                self.next_msg += 0.5
+            print(value)
 
 def main():
     width, height = 50, 50
@@ -130,13 +141,12 @@ def main():
     # Draw the placeholder image
     missing_size = 1000
     square_size = 150
-    empty = Image.new('RGB', (missing_size, missing_size), (255, 255, 255))
+    empty = Image.new('RGBA', (missing_size, missing_size), (0, 0, 0, 0))
     empty_draw = ImageDraw.Draw(empty)
     for xi, x in enumerate(range(square_size // 2, missing_size - (square_size // 2), square_size)):
         for yi, y in enumerate(range(square_size // 2, missing_size - (square_size // 2), square_size)):
-            if (xi + yi) % 2 == 0:
-                empty_draw.rectangle((x, y, x+square_size, y+square_size), (225, 225, 255))
-    empty.thumbnail((width, height))
+            empty_draw.rectangle((x, y, x+square_size, y+square_size), (225, 225, 225, 255) if (xi + yi) % 2 == 0 else (255, 255, 255, 255))
+    empty.thumbnail((width, height), Image.Resampling.LANCZOS)
 
     # Figure out how big the final image needs to be
     width = max((x['width'] + x['x']) for x in images)
@@ -153,25 +163,39 @@ def main():
     dr = ImageDraw.Draw(im)
     last_year = "--"
 
-    next_msg = time.time()
+    occasional = OccasionalMessage()
+
+    # Run through and draw drop shadows for all of the images
+    for i, cur in enumerate(images):
+        if 'fn' in cur:
+            occasional(f"Working on {i} shadow: {cur['fn']}")
+            with open(cur['fn']) as f:
+                data = json.load(f)
+            shadow = show_puzzle(data, transparent=True, solid_color=(64, 64, 64))
+            shadow.thumbnail((cur['width'], cur['height']), Image.Resampling.LANCZOS)
+            shadow = ImageOps.expand(shadow, (cur['width'], cur['height']), (0, 0, 0, 0))
+            shadow = shadow.filter(ImageFilter.BoxBlur(cur['width']//15))
+            im.paste(shadow, (cur['x']-cur['width']+(cur['width']//25), cur['y']-cur['height']+(cur['height']//25)), shadow)
+            shadow.close()
+
     for i, cur in enumerate(images):
         if 'missing' in cur:
             # Just place the "empty" image
-            im.paste(empty, (cur['x'], cur['y']))
+            im.paste(empty, (cur['x'], cur['y']), empty)
         elif 'text' in cur:
             # Draw the year
             dr.text((cur['x'], cur['y']), cur['text'], (0, 0, 0), fnt)
-        else:
+        elif 'fn' in cur:
             # Decode the data into an image and place it on the final image
-            if time.time() >= next_msg:
-                next_msg += 0.5
-                print(f"Working on {i}: {cur['fn']}")
             with open(cur['fn']) as f:
                 data = json.load(f)
-            temp = show_puzzle(data)
-            temp.thumbnail((cur['width'], cur['height']))
-            im.paste(temp, (cur['x'], cur['y']))
+            occasional(f"Working on {i}: {cur['fn']}")
+            temp = show_puzzle(data, transparent=True)
+            temp.thumbnail((cur['width'], cur['height']), Image.Resampling.LANCZOS)
+            im.paste(temp, (cur['x'], cur['y']), temp)
             temp.close()
+        else:
+            raise Exception()
 
     im.save(os.path.join("images", "preview.png"))
     print("Done!")
