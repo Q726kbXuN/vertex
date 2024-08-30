@@ -1,15 +1,33 @@
 #!/usr/bin/env python3
 
-from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageOps
-import os
-import json
-import time
 from datetime import datetime, timedelta
+from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageOps
+import json
+import os
+import sys
+import time
 
 def show_puzzle(data, transparent=False, solid_color=None):
     # Simple helper to decode a Vertex data dump into an image
-    min_x, min_y, max_x, max_y = None, None, None, None
+
+    # Normalize from different formats to a single format of data
+    for key in ['vertices', 'shapes', 'palettes']:
+        if key not in data and 'body' in data and key in data['body']:
+            data[key] = data['body'][key]
+    if 'palettes' in data and 'palette' not in data:
+        data['palette'] = data['palettes']
+    if isinstance(data["vertices"], list):
+        data["vertices"] = {str(i): x for i, x in enumerate(data["vertices"])}
+    if 'shapes' not in data['vertices']["0"]:
+        for vertex in data['vertices'].values():
+            vertex['shapes'] = []
+        for i, shape in enumerate(data['shapes']):
+            for vertex in shape['vertices']:
+                if i not in data['vertices'][str(vertex)]['shapes']:
+                    data['vertices'][str(vertex)]['shapes'].append(i)
+
     # Run through all of the vertex points and figure out the size of the image
+    min_x, min_y, max_x, max_y = None, None, None, None
     for key, value in data["vertices"].items():
         x, y = value["coordinates"]
         if min_x is None:
@@ -63,15 +81,29 @@ def enum_puzzles():
                 yield fn, cur
 
 class OccasionalMessage:
-    def __init__(self):
+    def __init__(self, delay=0.5):
+        self.delay = delay
         self.next_msg = time.time()
     def __call__(self, value):
-        if time.time() >= self.next_msg:
-            while time.time() >= self.next_msg:
-                self.next_msg += 0.5
+        now = time.time()
+        if now >= self.next_msg:
+            while now >= self.next_msg:
+                self.next_msg += self.delay
             print(value)
 
+def load_single_image(fn):
+    with open(fn) as f:
+        data = json.load(f)
+    im = show_puzzle(data)
+    output_fn = os.path.join("images", "single_image.png")
+    im.save(output_fn)
+    print(f"File {fn} saved as {output_fn}")
+
 def main():
+    if len(sys.argv) == 2:
+        load_single_image(sys.argv[1])
+        exit(0)
+
     width, height = 50, 50
     target_size = 1000
 

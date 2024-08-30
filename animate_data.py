@@ -7,10 +7,28 @@ USE_NVENC = False
 VERIFY_SIZE = False
 SECOND_FRAMES = False
 
+def clean_data(data):
+    # Normalize from different formats to a single format of data
+    for key in ['vertices', 'shapes', 'palettes']:
+        if key not in data and 'body' in data and key in data['body']:
+            data[key] = data['body'][key]
+    if 'palettes' in data and 'palette' not in data:
+        data['palette'] = data['palettes']
+    if isinstance(data["vertices"], list):
+        data["vertices"] = {str(i): x for i, x in enumerate(data["vertices"])}
+    if 'shapes' not in data['vertices']["0"]:
+        for vertex in data['vertices'].values():
+            vertex['shapes'] = []
+        for i, shape in enumerate(data['shapes']):
+            for vertex in shape['vertices']:
+                if i not in data['vertices'][str(vertex)]['shapes']:
+                    data['vertices'][str(vertex)]['shapes'].append(i)
+
 def show_puzzle(data, transparent=False, solid_color=None, appear=None, decay=None):
     # Simple helper to decode a Vertex data dump into an image
-    min_x, min_y, max_x, max_y = None, None, None, None
+
     # Run through all of the vertex points and figure out the size of the image
+    min_x, min_y, max_x, max_y = None, None, None, None
     for key, value in data["vertices"].items():
         x, y = value["coordinates"]
         if min_x is None:
@@ -247,6 +265,17 @@ def set_offset(val):
     global _second_offset
     _second_offset = val
 
+class OccasionalMessage:
+    def __init__(self, delay=0.5):
+        self.delay = delay
+        self.next_msg = time.time()
+    def __call__(self, value):
+        now = time.time()
+        if now >= self.next_msg:
+            while now >= self.next_msg:
+                self.next_msg += self.delay
+            print(value)
+
 def main():
     if len(sys.argv) == 3:
         target = (sys.argv[1], sys.argv[2])
@@ -286,7 +315,7 @@ def main():
         os.unlink(os.path.join("frames", cur))
 
     # Spin off to the workers to do the work
-    next_msg = time.time()
+    occasional = OccasionalMessage(1)
     new_frames = 0
     global _second_offset
     with multiprocessing.Pool(initializer=set_offset, initargs=(_second_offset,)) as pool:
@@ -294,10 +323,7 @@ def main():
             if isinstance(msg, int):
                 new_frames = msg
             else:
-                if time.time() >= next_msg:
-                    while time.time() >= next_msg:
-                        next_msg += 1
-                    print(msg)
+                occasional(msg)
 
     _second_offset += new_frames
 
@@ -376,7 +402,8 @@ def worker(job):
     # Copy it if we need more copies
     for frame in range(job['frame_no']+1, job['frame_no'] + job['frames']):
         shutil.copy(source_fn, make_fn(frame))
-        shutil.copy(source_fn, make_fn_2(frame))
+        if SECOND_FRAMES:
+            shutil.copy(source_fn, make_fn_2(frame))
 
     data_fn = job['source'].replace("\\", "/").split("/")[-1]
     target_fn = source_fn.replace("\\", "/").split("/")[-1]
