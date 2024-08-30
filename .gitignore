@@ -1,2 +1,16 @@
+**/.vscode/
+*.resx
+**/__pycache__/
+*.py[cod]
+*$py.class
+**/pythonenv*/
+**/.venv/
+**/.vs/
+**/bin/
+**/obj/
+*~
+**/.DS_Store/
+
 frames/*
+frames2/*
 output/*

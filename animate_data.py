@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 
-from PIL import Image, ImageDraw, ImageFont, ImageOps
+from PIL import Image, ImageDraw, ImageFont
 import json, multiprocessing, os, random, shutil, subprocess, sys, time
 
 USE_NVENC = False
 VERIFY_SIZE = False
+SECOND_FRAMES = False
 
 def show_puzzle(data, transparent=False, solid_color=None, appear=None, decay=None):
     # Simple helper to decode a Vertex data dump into an image
@@ -27,6 +28,14 @@ def show_puzzle(data, transparent=False, solid_color=None, appear=None, decay=No
     # Draw each polygon in turn
     im = Image.new('RGBA' if transparent else 'RGB', (width, height), (0,0,0,0) if transparent else (255, 255, 255))
     dr = ImageDraw.Draw(im)
+
+    for i, c in enumerate(data["palette"]):
+        # Turn the #rrggbb or #rgb into a normal PIL color tuple
+        if len(c) == 4:
+            c = (int(c[1], 16) * 17, int(c[2], 16) * 17, int(c[3], 16) * 17) + ((255,) if transparent else tuple())
+        else:
+            c = (int(c[1:3], 16), int(c[3:5], 16), int(c[5:7], 16)) + ((255,) if transparent else tuple())
+        data['palette'][i] = c
 
     for shape in data["shapes"]:
         if shape.get('isPreDrawn', False) or shape.get('sides', 0) > 0:
@@ -51,13 +60,7 @@ def show_puzzle(data, transparent=False, solid_color=None, appear=None, decay=No
             else:
                 # Otherwise, draw the solid color
                 if solid_color is None:
-                    c = int(shape["color"])
-                    c = data["palette"][c]
-                    # Turn the #rrggbb or #rgb into a normal PIL color tuple
-                    if len(c) == 4:
-                        c = (int(c[1], 16) * 17, int(c[2], 16) * 17, int(c[3], 16) * 17) + ((255,) if transparent else tuple())
-                    else:
-                        c = (int(c[1:3], 16), int(c[3:5], 16), int(c[5:7], 16)) + ((255,) if transparent else tuple())
+                    c = data["palette"][int(shape["color"])]
                     if decay is not None:
                         c = (int(c[0] * (1 - decay) + 255 * decay), int(c[1] * (1 - decay) + 255 * decay), int(c[2] * (1 - decay) + 255 * decay))
                 else:
@@ -105,15 +108,23 @@ def get_filenames(target):
 def get_items(target, full_data=True):
     # Load data
     frame_no = 0
+    left = 0
+    files_left = 0
 
     for fn in get_filenames(target):
+        with open(fn) as f:
+            data = json.load(f)
+        left += sum(1 for x in data['shapes'] if not x.get('isPreDrawn', False))
+        files_left += 1
+
+    for fn in get_filenames(target):
+        files_left -= 1
         with open(fn) as f:
             data = json.load(f)
 
         # Build up a list of frames to draw
         cur_vertex = None
         cur_shape = None
-        left = sum(1 for x in data['shapes'] if not x.get('isPreDrawn', False))
         todo = []
         first = True
         # Vertices we've touched, these are next to use
@@ -178,9 +189,9 @@ def get_items(target, full_data=True):
 
             # Save this frame as something to do, using json.dumps here as a simple deep-copy
             if full_data:
-                todo.append({"source": fn, "data": json.dumps(data), "left": left, "frames": 1})
+                todo.append({"source": fn, "left": left, "data": json.dumps(data), "frames": 1, "files_left": files_left})
             else:
-                todo.append({"source": fn, "left": left, "frames": 1})
+                todo.append({"source": fn, "left": left, "frames": 1, "files_left": files_left})
 
         # Add a little animation on the first and last state
         temp = []
@@ -207,6 +218,7 @@ def get_items(target, full_data=True):
             cur['frame_no'] = frame_no
             frame_no += cur['frames']
             yield cur
+        yield frame_no
 
 def make_chunks():
     chunks = [
@@ -230,6 +242,11 @@ def make_chunks():
         sys.argv = sys.argv[0:1] + target
         main()
 
+_second_offset = 0
+def set_offset(val):
+    global _second_offset
+    _second_offset = val
+
 def main():
     if len(sys.argv) == 3:
         target = (sys.argv[1], sys.argv[2])
@@ -252,7 +269,7 @@ def main():
         exit(0)
 
     if VERIFY_SIZE:
-        counts = get_items(target, full_data=False)
+        counts = [x for x in get_items(target, full_data=False) if isinstance(x, dict)]
         total_days = len(set(x['source'] for x in counts))
         frames = sum(x['frames'] for x in counts)
         frames = frames // 60
@@ -261,7 +278,7 @@ def main():
         if yn != "y":
             exit(0)
 
-    for dn in ["frames", "output"]:
+    for dn in ["frames", "output"] + ["frames2"] if SECOND_FRAMES else []:
         if not os.path.isdir(dn):
             os.mkdir(dn)
 
@@ -270,12 +287,19 @@ def main():
 
     # Spin off to the workers to do the work
     next_msg = time.time()
-    with multiprocessing.Pool() as pool:
+    new_frames = 0
+    global _second_offset
+    with multiprocessing.Pool(initializer=set_offset, initargs=(_second_offset,)) as pool:
         for msg in pool.imap_unordered(worker, get_items(target)):
-            if time.time() >= next_msg:
-                while time.time() >= next_msg:
-                    next_msg += 1
-                print(msg)
+            if isinstance(msg, int):
+                new_frames = msg
+            else:
+                if time.time() >= next_msg:
+                    while time.time() >= next_msg:
+                        next_msg += 1
+                    print(msg)
+
+    _second_offset += new_frames
 
     cmd = [
         'ffmpeg', 
@@ -299,6 +323,9 @@ def main():
 
 _fnt_header, _fnt_footer = None, None
 def worker(job):
+    # Simple hack to return the total number of frames to the caller
+    if isinstance(job, int):
+        return job
     # Load the data and draw it
     data = json.loads(job['data'])
     im = show_puzzle(data, appear=job.get('appear'), decay=job.get('decay'))
@@ -333,20 +360,27 @@ def worker(job):
 
     # Shrink the image down
     im.thumbnail((1580, 1040))
-    im_big = ImageOps.expand(im, ((1920 - im.width) // 2, (1080 - im.height) // 2), (255, 255, 255))
+    im_big = Image.new('RGB', (1920, 1080), (255, 255, 255))
+    im_big.paste(im, ((im_big.width - im.width) // 2, (im_big.height - im.height) // 2))
 
     # Save out the frame
     make_fn = lambda x: os.path.join("frames", f"frame_{x:08d}.png")
+    make_fn_2 = lambda x: os.path.join("frames2", f"frame_{x+_second_offset:08d}.png")
     source_fn = make_fn(job['frame_no'])
-    im_big.save(source_fn)
+    im_big.save(source_fn, 'PNG', compress_level=1)
+    if SECOND_FRAMES:
+        shutil.copy(source_fn, make_fn_2(job['frame_no']))
     im_big.close()
     im.close()
 
     # Copy it if we need more copies
     for frame in range(job['frame_no']+1, job['frame_no'] + job['frames']):
         shutil.copy(source_fn, make_fn(frame))
+        shutil.copy(source_fn, make_fn_2(frame))
 
-    return f"Done with {job['source']}:{source_fn}, {job['left']} to show"
+    data_fn = job['source'].replace("\\", "/").split("/")[-1]
+    target_fn = source_fn.replace("\\", "/").split("/")[-1]
+    return f"Done with {data_fn}:{target_fn}, {job['left']:,} tris to show, {job['files_left']:,} files left"
 
 if __name__ == "__main__":
     main()
