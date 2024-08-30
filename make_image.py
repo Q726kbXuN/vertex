@@ -2,10 +2,7 @@
 
 from datetime import datetime, timedelta
 from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageOps
-import json
-import os
-import sys
-import time
+import io, json, multiprocessing, os, sys, time
 
 def show_puzzle(data, transparent=False, solid_color=None):
     # Simple helper to decode a Vertex data dump into an image
@@ -99,6 +96,34 @@ def load_single_image(fn):
     im.save(output_fn)
     print(f"File {fn} saved as {output_fn}")
 
+def shadow_worker(cur):
+    cur['msg'] = f"Working on {cur['i']} shadow: {cur['fn']}"
+    with open(cur['fn']) as f:
+        data = json.load(f)
+    shadow = show_puzzle(data, transparent=True, solid_color=(64, 64, 64))
+    shadow.thumbnail((cur['width'], cur['height']), Image.Resampling.LANCZOS)
+    shadow = ImageOps.expand(shadow, (cur['width'], cur['height']), (0, 0, 0, 0))
+    shadow = shadow.filter(ImageFilter.BoxBlur(cur['width']//15))
+    bits = io.BytesIO()
+    shadow.save(bits, 'PNG')
+    cur['bits'] = bits.getvalue()
+    shadow.close()
+    return cur
+
+def draw_worker(cur):
+    if 'fn' in cur:
+        # Decode the data into an image and place it on the final image
+        with open(cur['fn']) as f:
+            data = json.load(f)
+        cur['msg'] = f"Working on {cur['i']}: {cur['fn']}"
+        temp = show_puzzle(data, transparent=True)
+        temp.thumbnail((cur['width'], cur['height']), Image.Resampling.LANCZOS)
+        bits = io.BytesIO()
+        temp.save(bits, 'PNG')
+        cur['bits'] = bits.getvalue()
+        temp.close()
+    return cur
+
 def main():
     if len(sys.argv) == 2:
         load_single_image(sys.argv[1])
@@ -113,7 +138,7 @@ def main():
     fnt = ImageFont.truetype(os.path.join("images", "OpenSans-Regular.ttf"), 40)
     last_year = "--"
 
-    expected_date = datetime(2019, 12, 20)
+    expected_date = None
 
     for file_only, fn in enum_puzzles():
         # This is the "image" we're showing on the grid
@@ -141,6 +166,14 @@ def main():
             })
             y += images[-1]['height']
             last_year = temp['year']
+
+        # Note where we start
+        if expected_date is None:
+            expected_date = datetime(
+                year=int(file_only[0:4]),
+                month=int(file_only[5:7]),
+                day=int(file_only[8:10]),
+            )
 
         # If this image skips days after the last one, add "empty" images
         while datetime.strptime(file_only[:10], "%Y-%m-%d") > expected_date:
@@ -197,37 +230,35 @@ def main():
 
     occasional = OccasionalMessage()
 
-    # Run through and draw drop shadows for all of the images
     for i, cur in enumerate(images):
-        if 'fn' in cur:
-            occasional(f"Working on {i} shadow: {cur['fn']}")
-            with open(cur['fn']) as f:
-                data = json.load(f)
-            shadow = show_puzzle(data, transparent=True, solid_color=(64, 64, 64))
-            shadow.thumbnail((cur['width'], cur['height']), Image.Resampling.LANCZOS)
-            shadow = ImageOps.expand(shadow, (cur['width'], cur['height']), (0, 0, 0, 0))
-            shadow = shadow.filter(ImageFilter.BoxBlur(cur['width']//15))
+        cur['i'] = i
+
+    with multiprocessing.Pool() as pool:
+        # Run through and draw drop shadows for all of the images
+        for cur in pool.imap(shadow_worker, [x for x in images if 'fn' in x]):
+            occasional(cur['msg'])
+            bits = io.BytesIO(cur['bits'])
+            shadow = Image.open(bits)
             im.paste(shadow, (cur['x']-cur['width']+(cur['width']//25), cur['y']-cur['height']+(cur['height']//25)), shadow)
             shadow.close()
 
-    for i, cur in enumerate(images):
-        if 'missing' in cur:
-            # Just place the "empty" image
-            im.paste(empty, (cur['x'], cur['y']), empty)
-        elif 'text' in cur:
-            # Draw the year
-            dr.text((cur['x'], cur['y']), cur['text'], (0, 0, 0), fnt)
-        elif 'fn' in cur:
-            # Decode the data into an image and place it on the final image
-            with open(cur['fn']) as f:
-                data = json.load(f)
-            occasional(f"Working on {i}: {cur['fn']}")
-            temp = show_puzzle(data, transparent=True)
-            temp.thumbnail((cur['width'], cur['height']), Image.Resampling.LANCZOS)
-            im.paste(temp, (cur['x'], cur['y']), temp)
-            temp.close()
-        else:
-            raise Exception()
+        # And create the images themselves
+        for cur in pool.imap(draw_worker, images):
+            if 'missing' in cur:
+                # Just place the "empty" image
+                im.paste(empty, (cur['x'], cur['y']), empty)
+            elif 'text' in cur:
+                # Draw the year
+                dr.text((cur['x'], cur['y']), cur['text'], (0, 0, 0), fnt)
+            elif 'fn' in cur:
+                # Draw the decoded image
+                occasional(cur['msg'])
+                bits = io.BytesIO(cur['bits'])
+                temp = Image.open(bits)
+                im.paste(temp, (cur['x'], cur['y']), temp)
+                temp.close()
+            else:
+                raise Exception()
 
     im.save(os.path.join("images", "preview.png"))
     print("Done!")
