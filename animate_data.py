@@ -4,6 +4,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageOps
 import json, multiprocessing, os, random, shutil, subprocess, sys, time
 
 USE_NVENC = False
+VERIFY_SIZE = False
 
 def show_puzzle(data, transparent=False, solid_color=None, appear=None, decay=None):
     # Simple helper to decode a Vertex data dump into an image
@@ -101,7 +102,7 @@ def get_filenames(target):
     else:
         yield target
 
-def get_items(target):
+def get_items(target, full_data=True):
     # Load data
     frame_no = 0
 
@@ -176,7 +177,10 @@ def get_items(target):
                         data["vertices"][str(cur)]["hits"] += 1
 
             # Save this frame as something to do, using json.dumps here as a simple deep-copy
-            todo.append({"source": fn, "data": json.dumps(data), "left": left, "frames": 1})
+            if full_data:
+                todo.append({"source": fn, "data": json.dumps(data), "left": left, "frames": 1})
+            else:
+                todo.append({"source": fn, "left": left, "frames": 1})
 
         # Add a little animation on the first and last state
         temp = []
@@ -204,11 +208,36 @@ def get_items(target):
             frame_no += cur['frames']
             yield cur
 
+def make_chunks():
+    chunks = [
+        ["2019-01-01", "2019-12-31"],
+        ["2020-01-01", "2020-05-31"],
+        ["2020-06-01", "2020-12-31"],
+        ["2021-01-01", "2021-12-31"],
+        ["2022-01-01", "2022-03-31"],
+        ["2022-04-01", "2022-06-30"],
+        ["2022-07-01", "2022-09-30"],
+        ["2022-10-01", "2022-12-31"],
+        ["2023-01-01", "2023-03-31"],
+        ["2023-04-01", "2023-06-30"],
+        ["2023-07-01", "2023-09-30"],
+        ["2023-10-01", "2023-12-31"],
+        ["2024-01-01", "2024-03-31"],
+        ["2024-04-01", "2024-06-30"],
+        ["2024-07-01", "2024-09-30"],
+    ]
+    for target in chunks:
+        sys.argv = sys.argv[0:1] + target
+        main()
+
 def main():
     if len(sys.argv) == 3:
         target = (sys.argv[1], sys.argv[2])
     elif len(sys.argv) == 2:
         target = sys.argv[1]
+        if target == "chunks":
+            make_chunks()
+            exit(0)
         if target != "all":
             if not os.path.isfile(target):
                 target = None
@@ -219,16 +248,18 @@ def main():
         print("Usage: ")
         print("  <filename> = Animate a specific file")
         print("  all = Animate all files")
+        print("  chunks = Make predefined chunks")
         exit(0)
 
-    # counts = [{"frames": x['frames'], "source": x["source"]} for x in get_items(target)]
-    # total_days = len(set(x['source'] for x in counts))
-    # frames = sum(x['frames'] for x in counts)
-    # frames = frames // 60
-    # print(f"This will make a video of {frames//3600}:{(frames%3600)//60:02d}:{frames%60:02d} long for {total_days} days.")
-    # yn = input("Continue? [y/(n)] ")
-    # if yn != "y":
-    #     exit(0)
+    if VERIFY_SIZE:
+        counts = get_items(target, full_data=False)
+        total_days = len(set(x['source'] for x in counts))
+        frames = sum(x['frames'] for x in counts)
+        frames = frames // 60
+        print(f"This will make a video of {frames//3600}:{(frames%3600)//60:02d}:{frames%60:02d} long for {total_days} days.")
+        yn = input("Continue? [y/(n)] ")
+        if yn != "y":
+            exit(0)
 
     for dn in ["frames", "output"]:
         if not os.path.isdir(dn):
