@@ -5,7 +5,7 @@ import os
 import shutil
 import subprocess
 
-subprocess.check_call(["gallery-dl", "--cookies-from-browser", "Chrome", "https://x.com/vertexarchive"])
+subprocess.check_call(["gallery-dl", "--cookies-from-browser", "Chrome", "--write-metadata", "https://x.com/vertexarchive"])
 
 existing, new = 0, 0
 
