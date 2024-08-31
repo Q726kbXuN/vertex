@@ -128,17 +128,21 @@ def get_items(target, full_data=True):
     frame_no = 0
     left = 0
     files_left = 0
+    total_files = 0
 
     for fn in get_filenames(target):
         with open(fn) as f:
             data = json.load(f)
+        clean_data(data)
         left += sum(1 for x in data['shapes'] if not x.get('isPreDrawn', False))
         files_left += 1
+        total_files += 1
 
     for fn in get_filenames(target):
         files_left -= 1
         with open(fn) as f:
             data = json.load(f)
+        clean_data(data)
 
         # Build up a list of frames to draw
         cur_vertex = None
@@ -225,8 +229,12 @@ def get_items(target, full_data=True):
             temp.append(todo[-1].copy())
             temp[-1]['decay'] = i / 30
             if i == 0:
-                # Hold on the state when we're done for 1.0 seconds
-                temp[-1]['frames'] = 60
+                if total_files == 1:
+                    # Hold on the state when we're done for 5.0 seconds
+                    temp[-1]['frames'] = 60 * 5
+                else:
+                    # Hold on the state when we're done for 1.0 seconds
+                    temp[-1]['frames'] = 60
             else:
                 temp[-1]['type'] = 30 - i
         todo = temp
@@ -307,7 +315,7 @@ def main():
         if yn != "y":
             exit(0)
 
-    for dn in ["frames", "output"] + ["frames2"] if SECOND_FRAMES else []:
+    for dn in ["frames", "output"] + (["frames2"] if SECOND_FRAMES else []):
         if not os.path.isdir(dn):
             os.mkdir(dn)
 
