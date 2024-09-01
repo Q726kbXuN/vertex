@@ -6,8 +6,9 @@ from googleapiclient.http import MediaFileUpload
 from google_auth_oauthlib.flow import Flow
 import google.oauth2.credentials
 import json
+import time
 
-def main():
+def upload_next():
     os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 
     with open(os.path.join("..", "output", "daily.json")) as f:
@@ -19,7 +20,7 @@ def main():
             break
     if at is None:
         print("Unable to find video!")
-        exit(0)
+        return False
 
     api_service_name = "youtube"
     api_version = "v3"
@@ -65,6 +66,19 @@ def main():
     with open(os.path.join("..", "output", "daily.json"), "wt", newline="", encoding="utf-8") as f:
         json.dump(daily, f, indent=4)
         f.write("\n")
+    return True
+
+def main():
+    while True:
+        try:
+            status = upload_next()
+        except Exception as e:
+            print(f"ERROR: {e}")
+            status = True
+        if not status:
+            break
+        print("Sleeping for an hour...")
+        time.sleep(3600)
 
 if __name__ == "__main__":
     main()
