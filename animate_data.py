@@ -6,6 +6,7 @@ import json, multiprocessing, os, random, shutil, subprocess, sys, time
 USE_NVENC = False
 VERIFY_SIZE = False
 SECOND_FRAMES = False
+OUTPUT_FN = None
 
 def clean_data(data):
     # Normalize from different formats to a single format of data
@@ -246,6 +247,38 @@ def get_items(target, full_data=True):
             yield cur
         yield frame_no
 
+def make_daily():
+    global OUTPUT_FN
+
+    data_fn = os.path.join("output", "daily.json")
+    if os.path.isfile(data_fn):
+        with open(data_fn) as f:
+            data = json.load(f)
+    else:
+        data = {}
+        
+    for fn in get_filenames("all"):
+        if os.path.isfile("abort.txt"):
+            break
+        at = fn.replace("\\", "/").split("/")[-1][:10]
+        if at not in data:
+            target_dir = os.path.join("output", at[:4], at[5:7])
+            if not os.path.isdir(target_dir):
+                os.makedirs(target_dir)
+            target_file = os.path.join(target_dir, at + ".mp4")
+            OUTPUT_FN = target_file
+
+            print(f"Creating {at}...")
+            sys.argv = sys.argv[0:1] + [fn]
+            main()
+
+            with open(fn) as f:
+                temp = json.load(f)
+            data[at] = {"at": at, "video": "/".join([at[:4], at[5:7], at + ".mp4"]), "theme": temp['theme']}
+            with open(data_fn, "wt", newline="", encoding="utf-8") as f:
+                json.dump(data, f, indent=4, sort_keys=True)
+                f.write("\n")
+
 def make_chunks():
     chunks = [
         ["2019-01-01", "2019-12-31"],
@@ -289,7 +322,10 @@ def main():
         target = (sys.argv[1], sys.argv[2])
     elif len(sys.argv) == 2:
         target = sys.argv[1]
-        if target == "chunks":
+        if target == "daily":
+            make_daily()
+            exit(0)
+        elif target == "chunks":
             make_chunks()
             exit(0)
         if target != "all":
@@ -348,7 +384,10 @@ def main():
             '-pixel_format', 'yuv444p', 
             '-preset', 'default', 
         ]
-    if isinstance(target, tuple):
+
+    if OUTPUT_FN is not None:
+        cmd.append(OUTPUT_FN)
+    elif isinstance(target, tuple):
         cmd.append(os.path.join("output", "vertex_" + target[0] + "_" + target[1] + ".mp4"))
     else:
         cmd.append(os.path.join("output", "vertex_" + target.replace("\\", "/").split("/")[-1] + ".mp4"))
