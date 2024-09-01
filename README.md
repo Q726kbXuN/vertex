@@ -5,6 +5,7 @@ the games, and is missing several data files for past games.  If you either impl
 to play old games, or have the data behind the missing games, 
 please contact me on [reddit](https://www.reddit.com/user/nobody514/).
 
-There are also [videos](videos.md) of the playthrough of all of these games.
+And if you want to see what this data looks like, [here is an page](https://q726kbxun.github.io/vertex/index.html)
+with all of the images, and [here are a videoss](videos.md) of the playthrough of all of these games.
 
 ![Preview of data files](images/preview.png)
