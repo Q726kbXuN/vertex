@@ -278,6 +278,10 @@ def make_daily():
             with open(data_fn, "wt", newline="", encoding="utf-8") as f:
                 json.dump(data, f, indent=4, sort_keys=True)
                 f.write("\n")
+            with open(os.path.join("images", "youtube.jsonl"), "wt", encoding="utf-8", newline="") as f:
+                for key, value in data.items():
+                    if 'youtube' in value:
+                        f.write(json.dumps([key, value['youtube'], value['theme']]) + "\n")
 
 def make_chunks():
     chunks = [
