@@ -75,6 +75,13 @@ special = {
     "2021-07-22-13-15-32": ("2021-07-22", "Music box"),
 }
 
+# Load the youtube links
+youtube = {}
+with open(os.path.join("images", "youtube.jsonl")) as f:
+    for row in f:
+        row = json.loads(row)
+        youtube[row[0]] = "https://youtu.be/" + row[1]
+
 for tweet, fn in walk_dir('twitter_archive', {"png", "jpg"}):
     tweet = tweet.split("_")[0]
     if tweet not in ignore:
@@ -121,6 +128,7 @@ with open(os.path.join(old_cwd, "index.html"), "wt", newline="", encoding="utf-8
     f.write('''<!DOCTYPE html>
 <html>
 <head>
+<link rel="icon" type="image/png" sizes="32x32" href="images/favicon.png"/>
 <title>Vertex</title>
 <style>
 html {
@@ -133,6 +141,20 @@ a {
 a:hover {
     color: #000;
     text-decoration: underline;
+}
+.obj {
+    position: relative;
+}
+a.youtube {
+    width: 50px;
+    height: 30px;
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    background-image: url('images/play.png');
+}
+a.youtube:hover {
+    background-image: url('images/play-hover.png');
 }
 body {
     height: 100%;
@@ -236,7 +258,11 @@ img {
                 im.thumbnail((300, 300))
                 im.save(img_fn)
             url = f"https://github.com/Q726kbXuN/vertex/blob/master/data/{at.strftime('%Y')}/{at.strftime('%m')}/{cur}.json"
-            f.write(f'<a href="{url}"><img loading="lazy" src="{github(img_fn)}"></a>\n')
+            f.write(f'<span class="obj"><a href="{url}"><img loading="lazy" src="{github(img_fn)}">')
+            if at.strftime("%Y-%m-%d") in youtube:
+                url = youtube[at.strftime("%Y-%m-%d")]
+                f.write(f'<a href="{url}" class="youtube"></a>')
+            f.write('</a></span>\n')
         else:
             f.write('<span class="missing"></span>\n')
 
