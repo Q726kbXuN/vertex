@@ -27,10 +27,10 @@ Individual days:
 --><tr><td colspan="23" align="center">2019</td></tr><!--
 --><tr><td colspan="7" align="center">December         </td></tr><!--
 --><tr><td align="right">M</td><td align="right">T</td><td align="right">W</td><td align="right">T</td><td align="right">F</td><td align="right">S</td><td align="right">S</td></tr><!--
---><tr><td></td><td></td><td></td><td align="right"><a href="https://youtu.be/eghtL92Dq08">5</a></td><td align="right">--</td><td align="right">--</td><td align="right">--</td></tr><!--
+--><tr><td></td><td></td><td></td><td align="right"><a href="https://youtu.be/eghtL92Dq08" title="Known for singing">5</a></td><td align="right">--</td><td align="right">--</td><td align="right">--</td></tr><!--
 --><tr><td align="right">--</td><td align="right">--</td><td align="right">--</td><td align="right">--</td><td align="right">--</td><td align="right">--</td><td align="right">--</td></tr><!--
---><tr><td align="right">--</td><td align="right">--</td><td align="right">--</td><td align="right">--</td><td align="right"><a href="https://youtu.be/bK-BFHU_dpk">20</a></td><td align="right">21</td><td align="right">22</td></tr><!--
---><tr><td align="right">23</td><td align="right">24</td><td align="right">25</td><td align="right">26</td><td align="right">--</td><td align="right">28</td><td align="right">29</td></tr><!--
+--><tr><td align="right">--</td><td align="right">--</td><td align="right">--</td><td align="right">--</td><td align="right"><a href="https://youtu.be/bK-BFHU_dpk" title="Stick-to-itiveness">20</a></td><td align="right"><a href="https://youtu.be/Od7Um0km9yw" title="Chomping at the pit">21</a></td><td align="right"><a href="https://youtu.be/BsMSAuhv8PE" title="Member of the flock">22</a></td></tr><!--
+--><tr><td align="right"><a href="https://youtu.be/tK3vjnmtmAE" title="Listen here">23</a></td><td align="right"><a href="https://youtu.be/h8-x1IsBx1w" title="All hail">24</a></td><td align="right">25</td><td align="right">26</td><td align="right">--</td><td align="right">28</td><td align="right">29</td></tr><!--
 --><tr><td align="right">--</td><td align="right">--</td><td></td><td></td><td></td><td></td><td></td></tr><!--
 --><tr><td colspan="23" align="center">2020</td></tr><!--
 --><tr><td colspan="7" align="center">January          </td><td>&nbsp;</td><td colspan="7" align="center">February         </td><td>&nbsp;</td><td colspan="7" align="center">March            </td></tr><!--

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import os, re, json
+import html, os, re, json
 from datetime import datetime, timedelta
 
 def get_files_with_date():
@@ -15,7 +15,22 @@ def get_files_with_date():
                 if cur.endswith(".json"):
                     yield fn[:10], cur
 
+def get_links():
+    data_fn = os.path.join("output", "daily.json")
+    if os.path.isfile(data_fn):
+        with open(data_fn) as f:
+            data = json.load(f)
+    else:
+        return
+
+    with open(os.path.join("images", "youtube.jsonl"), "wt", encoding="utf-8", newline="") as f:
+        for key, value in data.items():
+            if 'youtube' in value:
+                f.write(json.dumps([key, value['youtube'], value['theme']]) + "\n")
+
 def make_cal():
+    get_links()
+
     known_dates = set(x[0] for x in get_files_with_date())
     start = min(known_dates)
     end = max(known_dates)
@@ -42,7 +57,7 @@ def make_cal():
     with open(os.path.join("images", "youtube.jsonl")) as f:
         for row in f:
             row = json.loads(row)
-            links[row[0]] = "https://youtu.be/" + row[1]
+            links[row[0]] = {"url": "https://youtu.be/" + row[1], "desc": row[2]}
 
     cal = "<table><!--\n"
     for year in sorted(dates):
@@ -80,8 +95,7 @@ def make_cal():
                         cal += '<td></td>'
                         disp.append('  ')
                     elif at in links:
-                        url = links[at]
-                        cal += f'<td align="right"><a href="{url}">{x.day}</a></td>'
+                        cal += f'<td align="right"><a href="{links[at]['url']}" title="{links[at]['desc']}">{x.day}</a></td>'
                         disp.append(f"{x.day:2d}")
                     elif at in known_dates:
                         cal += f'<td align="right">{x.day}</td>'
