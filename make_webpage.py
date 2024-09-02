@@ -205,7 +205,7 @@ img {
             # We have nothing for this day, just show a place holder
             value = {"at": cur, "title": "--"}
         
-        f.write(f"<span id=\"{cur}\">{at.strftime('%B, %d, %Y')}. {html.escape(value['title'])}</span><br>\n")
+        f.write(f"<span id=\"{cur}\">{at.strftime('%B')} {at.strftime('%d').lstrip('0')}, {at.strftime('%Y')}. {html.escape(value['title'])}</span><br>\n")
 
         if 'tweet' in value:
             f.write(f'<a href="{value['tweet']}">')
