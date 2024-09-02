@@ -343,6 +343,7 @@ def main():
         print("  <filename> = Animate a specific file")
         print("  all = Animate all files")
         print("  chunks = Make predefined chunks")
+        print("  daily = Create an animation for each day")
         exit(0)
 
     if VERIFY_SIZE:
