@@ -96,13 +96,15 @@ def main():
     while True:
         try:
             status = upload_next()
+            to_sleep = 0.5
         except Exception as e:
             print(f"ERROR: {e}")
+            to_sleep = 8
             status = True
         if not status:
             break
-        print("Sleeping for a while...")
-        time.sleep(3600 * 1.5)
+        print(f"Sleeping for {to_sleep:.1f} hours...")
+        time.sleep(3600 * to_sleep)
 
 if __name__ == "__main__":
     main()
