@@ -78,7 +78,7 @@ special = {
 for tweet, fn in walk_dir('twitter_archive', {"png", "jpg"}):
     tweet = tweet.split("_")[0]
     if tweet not in ignore:
-        with open(fn + ".json") as f:
+        with open(fn + ".json", "rt", encoding="utf-8") as f:
             temp = json.load(f)
 
         if tweet in special:
