@@ -1,14 +1,35 @@
 #!/usr/bin/env python3
 
-import os
-import googleapiclient.discovery
-from googleapiclient.http import MediaFileUpload
-from google_auth_oauthlib.flow import Flow
-import google.oauth2.credentials
-import json
-import time
+import json, os, sys, subprocess, time
+from datetime import datetime, UTC
+
+def ensure_venv():
+    if 'VIRTUAL_ENV' not in os.environ:
+        need_install = False
+        if not os.path.isdir(".venv"):
+            subprocess.check_call(["python3", "-m", "venv", ".venv"])
+            need_install = True
+        os.environ['VIRTUAL_ENV_PROMPT'] = '(.venv) '
+        os.environ['VIRTUAL_ENV'] = os.path.join(os.getcwd(), ".venv")
+        for cur in ["Scripts", "bin"]:
+            if os.path.isdir(os.path.join(os.getcwd(), ".venv", cur)):
+                venv_path = os.path.join(os.getcwd(), ".venv", cur)
+                break
+        for cur in ["python", "python.exe"]:
+            if os.path.isfile(os.path.join(venv_path, cur)):
+                venv_file = os.path.join(venv_path, cur)
+                break
+        os.environ['PATH'] = venv_path + (";" if ";" in os.environ['PATH'] else ":") + os.environ['PATH']
+        if need_install:
+            subprocess.call(["pip", "install", "-r", "requirements.txt"])
+        exit(subprocess.call([venv_file] + sys.argv))
 
 def upload_next():
+    from google_auth_oauthlib.flow import Flow
+    from googleapiclient.http import MediaFileUpload
+    import google.oauth2.credentials
+    import googleapiclient.discovery
+
     os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 
     with open(os.path.join("..", "output", "daily.json")) as f:
@@ -47,7 +68,8 @@ def upload_next():
     youtube = googleapiclient.discovery.build(
         api_service_name, api_version,  credentials=creds)
 
-    print(f"Uploading {at}: {daily[at]['theme']}, ", end="", flush=True)
+    now = datetime.now(UTC).strftime("%d %H:%M:%S")
+    print(f"{now}: Uploading {at}: {daily[at]['theme']}, ", end="", flush=True)
     request = youtube.videos().insert(
         part="snippet,status",
         body={
@@ -69,6 +91,8 @@ def upload_next():
     return True
 
 def main():
+    ensure_venv()
+
     while True:
         try:
             status = upload_next()
@@ -77,8 +101,8 @@ def main():
             status = True
         if not status:
             break
-        print("Sleeping for an hour...")
-        time.sleep(3600)
+        print("Sleeping for a while...")
+        time.sleep(3600 * 1.5)
 
 if __name__ == "__main__":
     main()
