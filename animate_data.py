@@ -3,9 +3,9 @@
 from PIL import Image, ImageDraw, ImageFont
 import json, multiprocessing, os, random, shutil, subprocess, sys, time
 
-USE_NVENC = False
-VERIFY_SIZE = False
-SECOND_FRAMES = False
+USE_NVENC = "ANIMATE_USE_NVENC" in os.environ
+VERIFY_SIZE = "ANIMATE_VERIFY_SIZE" in os.environ
+SECOND_FRAMES = "ANIMATE_SECOND_FRAMES" in os.environ
 OUTPUT_FN = None
 
 def clean_data(data):
