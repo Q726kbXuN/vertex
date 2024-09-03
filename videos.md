@@ -1,20 +1,13 @@
 Vertex Videos:
 
-* [2019](https://youtu.be/FPpEio93hfQ)
-* [2020-01](https://youtu.be/-9p9TWfJnbc)
-* [2020-06](https://youtu.be/g2eb-lT4Ug4)
-* [2021](https://youtu.be/1AZlDMSlevc)
-* [2022-01](https://youtu.be/D_OQoinVD7M)
-* [2022-04](https://youtu.be/dg4bCQyJXuo)
-* [2022-07](https://youtu.be/VkB73ZjT_Po)
-* [2022-10](https://youtu.be/nyUChEDt30g)
-* [2023-01](https://youtu.be/24OdTUGfA1c)
-* [2023-04](https://youtu.be/xtSCkMDZ9-M)
-* [2023-07](https://youtu.be/ky3qiW7gg8c)
-* [2023-10](https://youtu.be/GEaFuWokp2w)
-* [2024-01](https://youtu.be/XmBW5YM9wYc)
-* [2024-04](https://youtu.be/EKY55cFahsk)
-* [2024-07](https://youtu.be/3cgPNeWfBvA)
+| Year | Q1 | Q2 | Q3 | Q4 |
+| ---- | -- | -- | -- | -- |
+| 2019 |  |  |  | [Q4](https://youtu.be/FPpEio93hfQ) |
+| 2020 | [Q1](https://youtu.be/-9p9TWfJnbc) |  | [Q3](https://youtu.be/g2eb-lT4Ug4) |  |
+| 2021 | [Q1](https://youtu.be/1AZlDMSlevc) |  |  |  |
+| 2022 | [Q1](https://youtu.be/D_OQoinVD7M) | [Q2](https://youtu.be/dg4bCQyJXuo) | [Q3](https://youtu.be/VkB73ZjT_Po) | [Q4](https://youtu.be/nyUChEDt30g) |
+| 2023 | [Q1](https://youtu.be/24OdTUGfA1c) | [Q2](https://youtu.be/xtSCkMDZ9-M) | [Q3](https://youtu.be/ky3qiW7gg8c) | [Q4](https://youtu.be/GEaFuWokp2w) |
+| 2024 | [Q1](https://youtu.be/XmBW5YM9wYc) | [Q2](https://youtu.be/EKY55cFahsk) | [Q3](https://youtu.be/3cgPNeWfBvA) |  |
 
 Playlist:
 
