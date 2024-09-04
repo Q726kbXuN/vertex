@@ -84,6 +84,11 @@ def upload_next():
     )
     response = request.execute()
     print("Uploaded: " + response['id'])
+    if "UPLOAD_HELPER" in os.environ:
+        try:
+            subprocess.call([os.environ["UPLOAD_HELPER"], f"Uploaded {at}: {daily[at]['theme']}, as {response['id']}"])
+        except:
+            pass
     daily[at]['youtube'] = response['id']
     with open(os.path.join("..", "output", "daily.json"), "wt", newline="", encoding="utf-8") as f:
         json.dump(daily, f, indent=4)
