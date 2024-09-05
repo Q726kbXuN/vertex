@@ -5,11 +5,14 @@ from make_image import show_puzzle
 import html, json, os, re
 
 SERIALIZE_DATA = os.path.join(os.path.expanduser("~"), ".vertex-data.json")
+USE_LOCAL_FILES = False
 
 def github(fn):
-    # return fn
-    fn = fn.replace("\\", "/")
-    return 'https://raw.githubusercontent.com/Q726kbXuN/vertex/master/' + fn
+    if USE_LOCAL_FILES:
+        return fn
+    else:
+        fn = fn.replace("\\", "/")
+        return 'https://raw.githubusercontent.com/Q726kbXuN/vertex/master/' + fn
 
 def walk_dir(dirname, exts):
     dirs = [dirname]
@@ -76,7 +79,6 @@ ignore = {
     "2024-07-11-18-00-10",
     "2024-08-07-10-19-51",
 }
-
 # These tweets doesn't follow the normal format
 special = {
     "2021-03-07-16-16-37": ("2024-03-07", "Growing bananas"),
@@ -91,6 +93,9 @@ with open(os.path.join("images", "youtube.jsonl")) as f:
         youtube[row[0]] = "https://youtu.be/" + row[1]
 
 if SERIALIZE_DATA is not None and os.path.isfile(SERIALIZE_DATA):
+    # Since it takes a while to read all the little JSON files, and the data
+    # no longer changes, go ahead and serialize the final state of the data
+    # and load that state once we've done that.
     data.deserialize(SERIALIZE_DATA)
 else:
     for tweet, fn in walk_dir('twitter_archive', {"png", "jpg"}):
@@ -238,48 +243,49 @@ img {
             value = data.data[cur]
         else:
             # We have nothing for this day, just show a place holder
-            value = {"at": cur, "title": "--"}
+            value = {"at": cur, "title": "(missing)"}
         
         f.write(f"<span id=\"{cur}\">{at.strftime('%B')} {at.strftime('%d').lstrip('0')}, {at.strftime('%Y')}. {html.escape(value['title'])}</span><br>\n")
 
-        if 'tweet' in value:
-            f.write(f'<a href="{value['tweet']}">')
+        if 'tweet' in value or 'json' in value:
+            if 'tweet' in value:
+                f.write(f'<a href="{value['tweet']}">')
 
-        if '1' in value:
-            f.write(f'<img loading="lazy" src="{github(value['1'])}">\n')
-        else:
-            f.write('<span class="missing"></span>\n')
+            if '1' in value:
+                f.write(f'<img loading="lazy" src="{github(value['1'])}">\n')
+            else:
+                f.write('<span class="missing"></span>\n')
 
-        if '2' in value:
-            f.write(f'<img loading="lazy" src="{github(value['2'])}">\n')
-        else:
-            f.write('<span class="missing"></span>\n')
+            if '2' in value:
+                f.write(f'<img loading="lazy" src="{github(value['2'])}">\n')
+            else:
+                f.write('<span class="missing"></span>\n')
 
-        if 'tweet' in value:
-            f.write("</a>")
+            if 'tweet' in value:
+                f.write("</a>")
 
-        if 'json' in value:
-            img_dn = os.path.join("images", at.strftime("%Y"), at.strftime("%m"))
-            if not os.path.isdir(img_dn):
-                os.makedirs(img_dn)
-            img_fn = os.path.join(img_dn, cur + ".png")
-            if not os.path.isfile(img_fn):
-                with open(value['json']) as f_puzzle:
-                    temp = json.load(f_puzzle)
-                print("Create image for " + cur)
-                im = show_puzzle(temp)
-                im.thumbnail((300, 300))
-                im.save(img_fn)
-            url = f"https://github.com/Q726kbXuN/vertex/blob/master/data/{at.strftime('%Y')}/{at.strftime('%m')}/{cur}.json"
-            f.write(f'<span class="obj"><a href="{url}"><img loading="lazy" src="{github(img_fn)}">')
-            if at.strftime("%Y-%m-%d") in youtube:
-                url = youtube[at.strftime("%Y-%m-%d")]
-                f.write(f'<a href="{url}" class="youtube"></a>')
-            f.write('</a></span>\n')
-        else:
-            f.write('<span class="missing"></span>\n')
+            if 'json' in value:
+                img_dn = os.path.join("images", at.strftime("%Y"), at.strftime("%m"))
+                if not os.path.isdir(img_dn):
+                    os.makedirs(img_dn)
+                img_fn = os.path.join(img_dn, cur + ".png")
+                if not os.path.isfile(img_fn):
+                    with open(value['json']) as f_puzzle:
+                        temp = json.load(f_puzzle)
+                    print("Create image for " + cur)
+                    im = show_puzzle(temp)
+                    im.thumbnail((300, 300))
+                    im.save(img_fn)
+                url = f"https://github.com/Q726kbXuN/vertex/blob/master/data/{at.strftime('%Y')}/{at.strftime('%m')}/{cur}.json"
+                f.write(f'<span class="obj"><a href="{url}"><img loading="lazy" src="{github(img_fn)}">')
+                if at.strftime("%Y-%m-%d") in youtube:
+                    url = youtube[at.strftime("%Y-%m-%d")]
+                    f.write(f'<a href="{url}" class="youtube"></a>')
+                f.write('</a></span>\n')
+            else:
+                f.write('<span class="missing"></span>\n')
 
-        f.write("<br>\n")
+            f.write("<br>\n")
 
         # print(f"{value['at']} {'json' if 'json' in value else '    '} {'t1' if '1' in value else '  '} {'t2' if '2' in value else '  '} {value['title']}")
         # print(data.data[key])
