@@ -3,6 +3,8 @@
 import html, os, re, json
 from datetime import datetime, timedelta
 
+SHOW_TUI_CAL = False
+
 def get_files_with_date():
     dirs = ["data"]
     while len(dirs):
@@ -62,14 +64,16 @@ def make_cal():
     cal = "<table><!--\n"
     for year in sorted(dates):
         cal += f'--><tr><td colspan="23" align="center">{year}</td></tr><!--\n'
-        print(" " * 10 + year)
+        if SHOW_TUI_CAL:
+            print(" " * 10 + year)
         months = list(sorted(dates[year]))
         for i in range(0, len(months), 3):
             cluster = months[i:i+3]
             cal += '--><tr>'
             cal += '<td>&nbsp;</td>'.join(f'<td colspan="7" align="center">{datetime(2010, int(x), 1).strftime("%B"):17}</td>' for x in cluster)
             cal += '</tr><!--\n'
-            print("  ".join(f'  {datetime(2010, int(x), 1).strftime("%B"):17}  ' for x in cluster))
+            if SHOW_TUI_CAL:
+                print("  ".join(f'  {datetime(2010, int(x), 1).strftime("%B"):17}  ' for x in cluster))
             for row in range(max(len(dates[year][x]) for x in cluster)):
                 target = []
                 for month in cluster:
@@ -95,7 +99,7 @@ def make_cal():
                         cal += '<td></td>'
                         disp.append('  ')
                     elif at in links:
-                        cal += f'<td align="right"><a href="{links[at]['url']}" title="{links[at]['desc']}">{x.day}</a></td>'
+                        cal += f'<td align="right"><a href="{links[at]['url']}" title="{html.escape(links[at]['desc'])}">{x.day}</a></td>'
                         disp.append(f"{x.day:2d}")
                     elif at in known_dates:
                         cal += f'<td align="right">{x.day}</td>'
@@ -104,7 +108,8 @@ def make_cal():
                         cal += f'<td align="right">--</td>'
                         disp.append("--")
                 cal += '</tr><!--\n'
-                print(" ".join(disp))
+                if SHOW_TUI_CAL:
+                    print(" ".join(disp))
 
     cal += "--></table>\n"
 

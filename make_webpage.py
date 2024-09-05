@@ -4,6 +4,8 @@ from datetime import datetime, timedelta
 from make_image import show_puzzle
 import html, json, os, re
 
+SERIALIZE_DATA = os.path.join(os.path.expanduser("~"), ".vertex-data.json")
+
 def github(fn):
     # return fn
     fn = fn.replace("\\", "/")
@@ -30,6 +32,12 @@ class Data:
         if len(title) > 0 and ("title" not in self.data[at] or use_title):
             self.data[at]["title"] = title
         self.data[at][group] = fn
+    def serialize(self, fn):
+        with open(fn, "wt", newline="", encoding="utf-8") as f:
+            json.dump(self.data, f, indent=4)
+    def deserialize(self, fn):
+        with open(fn, "rt", encoding="utf-8") as f:
+            self.data = json.load(f)
 
 def parse_date(val):
     return datetime(
@@ -82,43 +90,48 @@ with open(os.path.join("images", "youtube.jsonl")) as f:
         row = json.loads(row)
         youtube[row[0]] = "https://youtu.be/" + row[1]
 
-for tweet, fn in walk_dir('twitter_archive', {"png", "jpg"}):
-    tweet = tweet.split("_")[0]
-    if tweet not in ignore:
-        with open(fn + ".json", "rt", encoding="utf-8") as f:
+if SERIALIZE_DATA is not None and os.path.isfile(SERIALIZE_DATA):
+    data.deserialize(SERIALIZE_DATA)
+else:
+    for tweet, fn in walk_dir('twitter_archive', {"png", "jpg"}):
+        tweet = tweet.split("_")[0]
+        if tweet not in ignore:
+            with open(fn + ".json", "rt", encoding="utf-8") as f:
+                temp = json.load(f)
+
+            if tweet in special:
+                # Doesn't follow the normal format, just use the hardcoded one
+                at, title = special[tweet]
+            else:
+                # Parse out the datetime
+                title = temp['content']
+                m = re.search("^(?P<month>" + "|".join(months) + ") (?P<day>[0-9]+)(,|\\.|) (?P<year>[0-9]+)[. ]*(?P<title>.*?)(#|$)", title)
+                if m is None:
+                    m = re.search("^(?P<title>.*?\\.) (?P<month>" + "|".join(months) + ") (?P<day>[0-9]+)(,|\\.|) (?P<year>[0-9]+)", title)
+                if m is None:
+                    # Boom?  Show the user something went wrong
+                    print("TWEET: " + tweet)
+                    print("ERROR: " + title)
+                    exit(1)
+                # Pull out the data we care about
+                at = datetime(int(m.group("year")), months[m.group("month")], int(m.group("day")))
+                at = at.strftime("%Y-%m-%d")
+                title = m.group("title").strip(" .")
+
+            group = fn.split("_")[2][0]
+            data.add(at, group, fn, title)
+            if group == '1':
+                # Store the link to the tweet
+                data.add(at, "tweet", f"https://x.com/{temp['author']['name']}/status/{temp['tweet_id']}", '')
+
+    # Load the data from the puzzle data
+    for at, fn in walk_dir('data', {'json'}):
+        with open(fn) as f:
             temp = json.load(f)
+        data.add(at[:10], 'json', fn, temp['theme'], use_title=True)
 
-        if tweet in special:
-            # Doesn't follow the normal format, just use the hardcoded one
-            at, title = special[tweet]
-        else:
-            # Parse out the datetime
-            title = temp['content']
-            m = re.search("^(?P<month>" + "|".join(months) + ") (?P<day>[0-9]+)(,|\\.|) (?P<year>[0-9]+)[. ]*(?P<title>.*?)(#|$)", title)
-            if m is None:
-                m = re.search("^(?P<title>.*?\\.) (?P<month>" + "|".join(months) + ") (?P<day>[0-9]+)(,|\\.|) (?P<year>[0-9]+)", title)
-            if m is None:
-                # Boom?  Show the user something went wrong
-                print("TWEET: " + tweet)
-                print("ERROR: " + title)
-                exit(1)
-            # Pull out the data we care about
-            at = datetime(int(m.group("year")), months[m.group("month")], int(m.group("day")))
-            at = at.strftime("%Y-%m-%d")
-            title = m.group("title").strip(" .")
-
-        group = fn.split("_")[2][0]
-        data.add(at, group, fn, title)
-        if group == '1':
-            # Store the link to the tweet
-            data.add(at, "tweet", f"https://x.com/{temp['author']['name']}/status/{temp['tweet_id']}", '')
-
-
-# Load the data from the puzzle data
-for at, fn in walk_dir('data', {'json'}):
-    with open(fn) as f:
-        temp = json.load(f)
-    data.add(at[:10], 'json', fn, temp['theme'], use_title=True)
+    if SERIALIZE_DATA is not None:
+        data.serialize(SERIALIZE_DATA)
 
 # Show an entry for every day, including days missing both puzzle data and tweets
 start = parse_date(min(data.data))
