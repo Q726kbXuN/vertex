@@ -101,10 +101,10 @@ def main():
     while True:
         try:
             status = upload_next()
-            to_sleep = 0.5
+            to_sleep = 0.1
         except Exception as e:
             print(f"ERROR: {e}")
-            to_sleep = 8
+            to_sleep = 3
             status = True
         if not status:
             break
