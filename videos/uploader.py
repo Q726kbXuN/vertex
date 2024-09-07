@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import json, os, sys, subprocess, time
-from datetime import datetime, UTC
+from datetime import datetime, UTC, timedelta
 
 def ensure_venv():
     if 'VIRTUAL_ENV' not in os.environ:
@@ -104,7 +104,12 @@ def main():
             to_sleep = 0.1
         except Exception as e:
             print(f"ERROR: {e}")
-            to_sleep = 3
+            target = datetime.now(UTC)
+            target = datetime(target.year, target.month, target.day, 2, 15, 0)
+            target += timedelta(hours=8)
+            while target < datetime.now(UTC).replace(tzinfo=None):
+                target += timedelta(hours=24)
+            to_sleep = (target - datetime.now(UTC).replace(tzinfo=None)).total_seconds() / 3600
             status = True
         if not status:
             break
