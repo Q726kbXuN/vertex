@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
-import json, os, sys, subprocess, time
 from datetime import datetime, UTC, timedelta
+from urllib.parse import urlparse, parse_qs
+import json, os, sys, subprocess, time
 
 def ensure_venv():
     if 'VIRTUAL_ENV' not in os.environ:
@@ -59,7 +60,11 @@ def upload_next():
             redirect_uri='http://localhost')
         auth_url, _ = flow.authorization_url(prompt='consent')
         print('Please go to this URL: {}'.format(auth_url))
-        code = input('Enter the authorization code: ')
+        code = input('Enter the authorization code or URL: ')
+        if code.startswith("http://") or code.startswith("https://"):
+            code = urlparse(code)
+            code = parse_qs(code.query)
+            code = code['code'][0]
         flow.fetch_token(code=code)
         creds = flow.credentials
         with open(saved_creds_fn, "wt") as f:
