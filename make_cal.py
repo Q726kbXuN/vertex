@@ -17,6 +17,14 @@ def get_files_with_date():
                 if cur.endswith(".json"):
                     yield fn[:10], cur
 
+def load_link_data():
+    links = {}
+    with open(os.path.join("images", "youtube.jsonl")) as f:
+        for row in f:
+            row = json.loads(row)
+            links[row[0]] = {"url": "https://youtu.be/" + row[1], "desc": row[2]}
+    return links
+
 def get_links():
     data_fn = os.path.join("output", "daily.json")
     if os.path.isfile(data_fn):
@@ -25,10 +33,19 @@ def get_links():
     else:
         return
 
-    with open(os.path.join("images", "youtube.jsonl"), "wt", encoding="utf-8", newline="") as f:
-        for key, value in data.items():
-            if 'youtube' in value:
-                f.write(json.dumps([key, value['youtube'], value['theme']]) + "\n")
+    old_link_data = load_link_data()
+    added = 0
+    for key, value in data.items():
+        if 'youtube' in value:
+            if key not in old_link_data:
+                added += 1
+                print(f"New video {added}: {key}, '{value['theme']}'")
+
+    if added > 0:
+        with open(os.path.join("images", "youtube.jsonl"), "wt", encoding="utf-8", newline="") as f:
+            for key, value in data.items():
+                if 'youtube' in value:
+                    f.write(json.dumps([key, value['youtube'], value['theme']]) + "\n")
 
 def make_cal():
     get_links()
@@ -55,11 +72,7 @@ def make_cal():
     with open("videos.md", "rt", encoding="utf-8") as f:
         markdown = f.read()
 
-    links = {}
-    with open(os.path.join("images", "youtube.jsonl")) as f:
-        for row in f:
-            row = json.loads(row)
-            links[row[0]] = {"url": "https://youtu.be/" + row[1], "desc": row[2]}
+    links = load_link_data()
 
     cal = "<table><!--\n"
     for year in sorted(dates):
