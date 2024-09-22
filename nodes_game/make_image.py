@@ -13,7 +13,7 @@ def show_puzzle(data, transparent=False, solid_color=None):
     width, height = 1000, 1000
     length = max(max_x - min_x, max_y - min_y) * 1.1
 
-    im = Image.new('RGBA' if transparent else 'RGB', (width, height), (0,0,0,0) if transparent else (255, 255, 255))
+    im = Image.new('RGBA' if transparent else 'RGB', (width, height), (255, 255, 255, 0) if transparent else (255, 255, 255))
     dr = ImageDraw.Draw(im)
     for shape in data["shapes"]:
         pts = []
@@ -64,18 +64,19 @@ def draw_worker(cur):
     image_bits = bits.getvalue()
     temp.close()
 
-    temp = show_puzzle(data, transparent=True, solid_color=(64, 64, 64))
-    border_x = 5 * (temp.width // cur.width)
-    border_y = 5 * (temp.height // cur.height)
-    temp = ImageOps.expand(temp, (border_x, border_y), (0, 0, 0, 0))
-    temp = temp.filter(ImageFilter.BoxBlur(cur.width * 1.5))
-    temp.thumbnail((cur.width + 5 * 2, cur.height + 5 * 2), Image.Resampling.LANCZOS)
+    temp = show_puzzle(data, transparent=True, solid_color=(100, 100, 100))
+    shadow_border = 10
+    border_x = shadow_border * (temp.width // cur.width)
+    border_y = shadow_border * (temp.height // cur.height)
+    temp = ImageOps.expand(temp, (border_x, border_y), (255, 255, 255, 0))
+    temp = temp.filter(ImageFilter.BoxBlur(cur.width * 1.25))
+    temp.thumbnail((cur.width + shadow_border * 2, cur.height + shadow_border * 2), Image.Resampling.LANCZOS)
     bits = io.BytesIO()
     temp.save(bits, 'PNG')
     shadow_bits = bits.getvalue()
     temp.close()
 
-    return cur.i, image_bits, shadow_bits
+    return cur.i, image_bits, shadow_bits, shadow_border
 
 class Layout:
     def __init__(self, max_width=None, padding=0):
@@ -164,7 +165,7 @@ class ObjImage(ObjBlank):
     def draw(self, layer, im, dr):
         bits = io.BytesIO(self.image if (layer == "image") else self.shadow)
         temp = Image.open(bits)
-        im.paste(temp, (self.x - (0 if (layer == "image") else 5), self.y - (0 if (layer == "image") else 5)), temp)
+        im.paste(temp, (self.x - (0 if (layer == "image") else self.shadow_border), self.y - (0 if (layer == "image") else self.shadow_border)), temp)
         temp.close()
 
 def main():
@@ -227,9 +228,10 @@ def main():
 
     # Draw everything in a pool to speed it up a bit    
     with multiprocessing.Pool() as pool:
-        for i, image, shadow in pool.imap_unordered(draw_worker, todo):
+        for i, image, shadow, shadow_border in pool.imap_unordered(draw_worker, todo):
             layout.objects[i].image = image
             layout.objects[i].shadow = shadow
+            layout.objects[i].shadow_border = shadow_border
 
     # And finally draw all the things
     im = layout.draw()
