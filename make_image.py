@@ -162,10 +162,13 @@ class ObjText(ObjBase):
     def __init__(self, val, font_size):
         self.val = val
         self.fnt = ImageFont.truetype(os.path.join("images", "OpenSans-Regular.ttf"), font_size)
-        bbox = self.fnt.getbbox(val)
-        super().__init__(bbox[2], int(bbox[3] * 1.1), {"text"})
+        x1, y1, x2, y2 = self.fnt.getbbox(val)
+        self.pad = int(max(x2 - x1, y2 - y1) * 0.1)
+        super().__init__((x2 - x1) + (self.pad * 2), (y2 - y1) + (self.pad * 2), {"text"})
+        self.off_x = x1
+        self.off_y = y1
     def draw(self, layer, im, dr):
-        dr.text((self.x, self.y), self.val, (0, 0, 0), self.fnt)
+        dr.text((self.x - self.off_x + self.pad, self.y - self.off_y + self.pad), self.val, (0, 0, 0), self.fnt)
 
 class ObjBlank(ObjBase):
     def __init__(self, layers):
@@ -227,7 +230,7 @@ def main():
         # If we're at the start, or a new year, add a year header
         if last_at is None or last_at.strftime("%Y") != at.strftime("%Y"):
             layout.new_row()
-            layout.add_elem(ObjText(at.strftime("%Y"), 40))
+            layout.add_elem(ObjText(at.strftime("  %Y"), 40))
             layout.new_row()
             while len(layout.row) < (at.weekday() + 1) % 7:
                 layout.add_elem(ObjBlank(set()))
